@@ -1,4 +1,0 @@
-Manifest-Version: 1.0
-Implementation-Title: Java Pathfinder NAS extension
-Implementation-Version: 1.0
-
