@@ -1,0 +1,33 @@
+/build
+.gradle
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+.classpath
+.project
+.settings/
+.metadata/
+
+nbproject/
+.nbattrs
+
+.DS_Store
+Thumbs.db
+
+*.log
+
+*.class
+
+# JAR/WAR/EAR files
+*.jar
+*.war
+*.ear
+
+# Local configuration
+local.properties
+
+# Bin directory
+bin/
