@@ -26,7 +26,12 @@ dependencies {
 sourceSets {
     main {
         java {
-            srcDirs = ['src/main', 'src/peers', 'src/classes']
+            srcDirs = ['src/main', 'src/peers']
+        }
+    }
+    model {
+        java {
+            srcDirs = ['src/classes']
         }
     }
     test {
@@ -36,6 +41,17 @@ sourceSets {
         resources {
             srcDirs = ['src/tests/resources']
         }
+    }
+}
+
+tasks.register('modelJar', Jar) {
+    archiveBaseName = 'jpf-nas-classes'
+    from sourceSets.model.output
+    manifest {
+        attributes(
+                'Implementation-Title': 'JPF NAS Model Classes',
+                'Implementation-Version': '1.0'
+        )
     }
 }
 
