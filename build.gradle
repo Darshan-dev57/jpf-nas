@@ -1,3 +1,5 @@
+import org.gradle.internal.jvm.Jvm
+
 plugins {
     id 'java'
     id 'maven-publish'
@@ -14,9 +16,10 @@ repositories {
 }
 
 dependencies {
-    // JPF-core jars (adjust path as needed)
-    implementation files("/home/finn/jpf-push/jpf-core/build/jpf.jar")
-    implementation files("/home/finn/jpf-push/jpf-core/build/jpf-classes.jar")
+    def jpfCoreJar = jpf.Jar.getFullPath()
+    def jpfCoreDir = new File(jpfCoreJar).parent
+    implementation files(jpfCoreJar)
+    implementation files("${jpfCoreDir}/jpf-classes.jar")
     // Local libraries
     implementation fileTree(dir: 'lib', include: ['*.jar'])
     // Test dependencies
@@ -29,11 +32,6 @@ sourceSets {
             srcDirs = ['src/main', 'src/peers']
         }
     }
-    model {
-        java {
-            srcDirs = ['src/classes']
-        }
-    }
     test {
         java {
             srcDirs = ['src/tests']
@@ -44,9 +42,38 @@ sourceSets {
     }
 }
 
+tasks.register('compileModelClasses', Exec) {
+    // Adjust these paths as needed for your project structure
+    def srcDir = file('src/classes')
+    def outDir = file("$buildDir/model-classes")
+    def javaHome = Jvm.current().javaHome
+
+    inputs.dir srcDir
+    outputs.dir outDir
+
+    // Find all .java files under src/classes
+    def javaFiles = fileTree(dir: srcDir, include: '**/*.java').files.collect { it.path }
+
+    // Only run if there are java files
+    onlyIf { !javaFiles.isEmpty() }
+
+    doFirst {
+        outDir.mkdirs()
+    }
+
+    // The actual javac command
+    commandLine = [
+            "${javaHome}/bin/javac",
+            '--patch-module', "java.base=${srcDir}",
+            '-d', outDir
+    ] + javaFiles
+}
+
+
 tasks.register('modelJar', Jar) {
+    dependsOn compileModelClasses
     archiveBaseName = 'jpf-nas-classes'
-    from sourceSets.model.output
+    from("$buildDir/model-classes")
     manifest {
         attributes(
                 'Implementation-Title': 'JPF NAS Model Classes',
@@ -54,6 +81,7 @@ tasks.register('modelJar', Jar) {
         )
     }
 }
+
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
@@ -88,17 +116,26 @@ jar {
     manifest {
         attributes(
                 'Implementation-Title': 'Java Pathfinder NAS extension',
-                'Implementation-Version': '1.0'
         )
     }
 }
 
+artifacts {
+    archives modelJar
+}
+
+
 publishing {
     publications {
-        jpfNas(MavenPublication) {
+        core(MavenPublication) {
+            artifact jar
             groupId = 'gov.nasa'
             artifactId = 'jpf-nas'
-            artifact jar
+        }
+        model(MavenPublication) {
+            artifact modelJar
+            groupId = 'gov.nasa'
+            artifactId = 'jpf-nas-classes'
         }
     }
 }
