@@ -35,4 +35,4 @@ jobs:
           echo "extensions = $HOME/jpf-core" >> $HOME/.jpf/site.properties
 
       - name: Build and test jpf-nas
-        run: ./gradlew clean build
+        run: ./gradlew clean test
