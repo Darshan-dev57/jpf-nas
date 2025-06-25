@@ -15,17 +15,7 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    def jpfCoreJar = jpf.Jar.getFullPath()
-    def jpfCoreDir = new File(jpfCoreJar).parent
-    implementation files(jpfCoreJar)
-    implementation files("${jpfCoreDir}/jpf-classes.jar")
-    // Local libraries
-    implementation fileTree(dir: 'lib', include: ['*.jar'])
-    // Test dependencies
-    testImplementation 'junit:junit:4.13.2'
-}
-
+// --- Source Sets ---
 sourceSets {
     main {
         java {
@@ -40,10 +30,59 @@ sourceSets {
             srcDirs = ['src/tests/resources']
         }
     }
+    examples {
+        java {
+            srcDirs = ['src/examples']
+        }
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
 }
 
+configurations {
+    examplesImplementation.extendsFrom implementation
+    examplesRuntimeOnly.extendsFrom runtimeOnly
+}
+
+
+dependencies {
+    def jpfCoreJar = jpf.Jar.getFullPath()
+    def jpfCoreDir = new File(jpfCoreJar).parent
+
+    implementation files(jpfCoreJar)
+    implementation files("${jpfCoreDir}/jpf-classes.jar")
+    implementation platform('com.google.cloud:libraries-bom:26.38.0')
+    implementation 'com.google.cloud:google-cloud-translate'
+    implementation fileTree(dir: 'lib', include: ['*.jar'])
+    testImplementation 'junit:junit:4.13.2'
+
+    // examples dependencies for the api
+    examplesImplementation platform('com.google.cloud:libraries-bom:26.38.0')
+    examplesImplementation 'com.google.cloud:google-cloud-translate'
+    examplesImplementation fileTree(dir: 'lib', include: ['*.jar'])
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('compileExamplesJava')
+}
+
+// examples as jar
+tasks.register('examplesJar', Jar) {
+    archiveBaseName = 'jpf-nas-examples'
+    from sourceSets.examples.output
+    manifest {
+        attributes(
+                'Implementation-Title': 'JPF NAS Examples',
+                'Implementation-Version': '1.0'
+        )
+    }
+}
+artifacts {
+    archives tasks.named('examplesJar')
+}
+
+
 tasks.register('compileModelClasses', Exec) {
-    // Adjust these paths as needed for your project structure
     def srcDir = file('src/classes')
     def outDir = file("$buildDir/model-classes")
     def javaHome = Jvm.current().javaHome
@@ -51,17 +90,11 @@ tasks.register('compileModelClasses', Exec) {
     inputs.dir srcDir
     outputs.dir outDir
 
-    // Find all .java files under src/classes
     def javaFiles = fileTree(dir: srcDir, include: '**/*.java').files.collect { it.path }
-
-    // Only run if there are java files
     onlyIf { !javaFiles.isEmpty() }
 
-    doFirst {
-        outDir.mkdirs()
-    }
+    doFirst { outDir.mkdirs() }
 
-    // The actual javac command
     commandLine = [
             "${javaHome}/bin/javac",
             '--patch-module', "java.base=${srcDir}",
@@ -69,9 +102,8 @@ tasks.register('compileModelClasses', Exec) {
     ] + javaFiles
 }
 
-
 tasks.register('modelJar', Jar) {
-    dependsOn compileModelClasses
+    dependsOn tasks.named('compileModelClasses')
     archiveBaseName = 'jpf-nas-classes'
     from("$buildDir/model-classes")
     manifest {
@@ -121,21 +153,25 @@ jar {
 }
 
 artifacts {
-    archives modelJar
+    archives tasks.named('modelJar')
 }
-
 
 publishing {
     publications {
         core(MavenPublication) {
-            artifact jar
+            artifact tasks.named('jar')
             groupId = 'gov.nasa'
             artifactId = 'jpf-nas'
         }
         model(MavenPublication) {
-            artifact modelJar
+            artifact tasks.named('modelJar')
             groupId = 'gov.nasa'
             artifactId = 'jpf-nas-classes'
+        }
+        examples(MavenPublication) {
+            artifact tasks.named('examplesJar')
+            groupId = 'gov.nasa'
+            artifactId = 'jpf-nas-examples'
         }
     }
 }
