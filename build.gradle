@@ -34,17 +34,18 @@ sourceSets {
         java {
             srcDirs = ['src/examples']
         }
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
 }
 
+// --- Custom Configurations for Examples ---
 configurations {
     examplesImplementation.extendsFrom implementation
     examplesRuntimeOnly.extendsFrom runtimeOnly
 }
 
-
+// --- Dependencies ---
 dependencies {
     def jpfCoreJar = jpf.Jar.getFullPath()
     def jpfCoreDir = new File(jpfCoreJar).parent
@@ -54,20 +55,25 @@ dependencies {
     implementation platform('com.google.cloud:libraries-bom:26.38.0')
     implementation 'com.google.cloud:google-cloud-translate'
     implementation fileTree(dir: 'lib', include: ['*.jar'])
-    testImplementation 'junit:junit:4.13.2'
 
-    // examples dependencies for the api
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation sourceSets.main.output
+
+    // Examples dependencies
     examplesImplementation platform('com.google.cloud:libraries-bom:26.38.0')
     examplesImplementation 'com.google.cloud:google-cloud-translate'
     examplesImplementation fileTree(dir: 'lib', include: ['*.jar'])
 }
 
+// --- Ensure examples are built with the main build ---
 tasks.named('build') {
     dependsOn tasks.named('compileExamplesJava')
+    dependsOn tasks.named('modelJar')
 }
 
-// examples as jar
+// --- Package examples as a jar ---
 tasks.register('examplesJar', Jar) {
+    dependsOn tasks.named('compileExamplesJava')
     archiveBaseName = 'jpf-nas-examples'
     from sourceSets.examples.output
     manifest {
@@ -77,11 +83,8 @@ tasks.register('examplesJar', Jar) {
         )
     }
 }
-artifacts {
-    archives tasks.named('examplesJar')
-}
 
-
+// --- Model Classes Compilation ---
 tasks.register('compileModelClasses', Exec) {
     def srcDir = file('src/classes')
     def outDir = file("$buildDir/model-classes")
@@ -114,16 +117,18 @@ tasks.register('modelJar', Jar) {
     }
 }
 
-
+// --- Java Compile Options ---
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.compilerArgs += [
-            '--add-exports', 'java.base/sun.net.www.protocol.http=ALL-UNNAMED',
             '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-            '--add-reads', 'java.base=ALL-UNNAMED'
+            '--add-exports', 'java.base/sun.net=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net.util=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net.www=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.net=ALL-UNNAMED',
+            '--add-opens', 'java.base/sun.net=ALL-UNNAMED'
     ]
+
 }
 
 test {
@@ -154,6 +159,7 @@ jar {
 
 artifacts {
     archives tasks.named('modelJar')
+    archives tasks.named('examplesJar')
 }
 
 publishing {
