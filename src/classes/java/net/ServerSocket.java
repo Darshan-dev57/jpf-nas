@@ -9,6 +9,25 @@ import java.io.IOException;
  */
 public class ServerSocket implements java.io.Closeable {
 
+  static {
+    try {
+      jdk.internal.misc.SharedSecrets.setJavaNetSocketAccess(
+              new jdk.internal.misc.JavaNetSocketAccess() {
+                @Override
+                public SocketImpl newSocketImpl(Class<? extends SocketImpl> clazz) {
+                  return new SocketImpl();
+                }
+
+                @Override
+                public ServerSocket newServerSocket(SocketImpl impl) {
+                  return null;
+                }
+              }
+      );
+    } catch (Exception e) {
+      // Exception ignored for graceful degradation
+    }
+  }
   /**
    * The implementation of this Socket.
    */
