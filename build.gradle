@@ -107,8 +107,14 @@ tasks.register('compileModelClasses', Exec) {
 
 tasks.register('modelJar', Jar) {
     dependsOn tasks.named('compileModelClasses')
+    dependsOn tasks.named('compileJava')
     archiveBaseName = 'jpf-nas-classes'
     from("$buildDir/model-classes")
+
+    from("$buildDir/classes/java/main") {
+        include "nas/util/test/TestNasJPF.class"
+    }
+
     manifest {
         attributes(
                 'Implementation-Title': 'JPF NAS Model Classes',
@@ -148,6 +154,7 @@ test {
 }
 
 jar {
+    dependsOn tasks.named('modelJar')
     archiveBaseName = 'jpf-nas'
     from sourceSets.main.output
     manifest {
