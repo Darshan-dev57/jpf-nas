@@ -69,6 +69,7 @@ dependencies {
 tasks.named('build') {
     dependsOn tasks.named('compileExamplesJava')
     dependsOn tasks.named('modelJar')
+    dependsOn tasks.named('examplesJar')
 }
 
 // --- Package examples as a jar ---
@@ -96,7 +97,10 @@ tasks.register('compileModelClasses', Exec) {
     def javaFiles = fileTree(dir: srcDir, include: '**/*.java').files.collect { it.path }
     onlyIf { !javaFiles.isEmpty() }
 
-    doFirst { outDir.mkdirs() }
+    doFirst {
+        outDir.mkdirs()
+        delete outDir.listFiles()
+    }
 
     commandLine = [
             "${javaHome}/bin/javac",
@@ -138,6 +142,11 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 test {
+    dependsOn tasks.named('jar')
+    dependsOn tasks.named('modelJar')
+    dependsOn tasks.named('examplesJar')
+    dependsOn tasks.named('compileExamplesJava')
+
     useJUnit()
     testLogging {
         events "passed", "skipped", "failed"
@@ -165,6 +174,7 @@ jar {
 }
 
 artifacts {
+    archives tasks.named('jar')
     archives tasks.named('modelJar')
     archives tasks.named('examplesJar')
 }
