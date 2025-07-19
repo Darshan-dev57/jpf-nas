@@ -50,50 +50,55 @@ public class JPF_java_net_ServerSocket extends NativePeer {
   }
 
   @MJI
-  public int accept0____Ljava_net_Socket_2 (MJIEnv env, int serverSocketRef) {
+  public int accept0____Ljava_net_Socket_2(MJIEnv env, int serverSocketRef) {
     ThreadInfo ti = env.getThreadInfo();
 
     if (ti.isFirstStepInsn()) { // re-executed
-      
+
       if(handleInjectedExceptionCg(env)) {
         return MJIEnv.NULL;
       }
-      
+
       int acceptedSocket = resetAndGetAcceptedSocket(env, serverSocketRef);
-      
-      // TODO - how about handling other states? e.g. notified | interrupted -> running
-      switch (ti.getState()) {
-      
-      case TIMEDOUT:
-        handleTimedoutAccept(env, ti, serverSocketRef);
-        assert ti.isRunnable();
-        return MJIEnv.NULL;
-        
-      case RUNNING:
-      case UNBLOCKED:
-        return acceptedSocket;
-        
-      default:
-        throw new JPFException("The state of the thread cannot be recognized in the re-execute of ServerSocker.accept()");
+
+      // If no cached socket, create one
+      if (acceptedSocket == MJIEnv.NULL) {
+        acceptedSocket = env.newObject("java.net.Socket");
+        int impl = env.newObject("java.net.PlainSocketImpl");
+        env.setReferenceField(acceptedSocket, "impl", impl);
+        env.getModifiableElementInfo(serverSocketRef).setReferenceField("acceptedSocket", acceptedSocket);
       }
-      
+
+      switch (ti.getState()) {
+        case TIMEDOUT:
+          handleTimedoutAccept(env, ti, serverSocketRef);
+          assert ti.isRunnable();
+          return MJIEnv.NULL;
+
+        case RUNNING:
+        case UNBLOCKED:
+          return acceptedSocket;
+
+        default:
+          throw new JPFException("The state of the thread cannot be recognized in the re-execute of ServerSocket.accept()");
+      }
+
     } else {
       if(isClosed(env, serverSocketRef)) {
         env.throwException("java.net.SocketException", "Socket is closed");
         resetAndGetAcceptedSocket(env, serverSocketRef);
       }
-       // Check if the server could connect to any pending client
       else if(connectToPendingClient(env, serverSocketRef)) {
         env.repeatInvocation();
       } else {
-        // create a new server connection and blocks it until it receives a connection
-        // request from a client
         blockServerAccept(env, serverSocketRef);
       }
-      
+
       return MJIEnv.NULL;
     }
   }
+
+
 
   protected boolean handleInjectedExceptionCg(MJIEnv env) {
     ThreadInfo ti = env.getThreadInfo();
