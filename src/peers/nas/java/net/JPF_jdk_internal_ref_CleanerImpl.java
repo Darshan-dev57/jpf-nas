@@ -10,10 +10,6 @@ import gov.nasa.jpf.vm.NativePeer;
  */
 public class JPF_jdk_internal_ref_CleanerImpl extends NativePeer {
 
-    static {
-        System.out.println("JPF_jdk_internal_ref_CleanerImpl loaded");
-    }
-
     @MJI
     public static int getCleanerImpl__Ljava_util_function_Function_2__Ljava_lang_Object_2(
             MJIEnv env, int objRef, int functionRef) {

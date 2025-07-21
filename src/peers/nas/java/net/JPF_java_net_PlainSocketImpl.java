@@ -24,10 +24,7 @@ public class JPF_java_net_PlainSocketImpl extends NativePeer {
         System.out.println("PlainSocketImpl static initialization intercepted");
     }
 
-    @MJI
-    public static void initProto____V(MJIEnv env, int clsObjRef) {
-        // Mock protocol initialization - prevents ExtendedSocketOptions chain
-    }
+
 
     @MJI
     public static void socketCreate__Z__V(MJIEnv env, int objRef, boolean stream) {
@@ -116,10 +113,7 @@ public class JPF_java_net_PlainSocketImpl extends NativePeer {
         }
     }
 
-    @MJI
-    public static void socketShutdown__I__V(MJIEnv env, int objRef, int howto) {
-        System.out.println("PlainSocketImpl.socketShutdown() intercepted");
-    }
+
 
     @MJI
     public static void socketSetOption__IZLjava_lang_Object_2__V(MJIEnv env, int objRef,
@@ -137,26 +131,5 @@ public class JPF_java_net_PlainSocketImpl extends NativePeer {
         }
     }
 
-    @MJI
-    public static int socketGetOption__II__I(MJIEnv env, int objRef, int opt, int valRef) {
-        System.out.println("PlainSocketImpl.socketGetOption() intercepted - option: " + opt);
-        return 0;
-    }
 
-
-    @MJI
-    public static void socketSendUrgentData__I__V(MJIEnv env, int objRef, int data) {
-        System.out.println("PlainSocketImpl.socketSendUrgentData() intercepted");
-    }
-
-    @MJI
-    public static int socketAvailable____I(MJIEnv env, int objRef) {
-        return 0;
-    }
-
-    // Helper method to get socket timeout
-    public static int getSocketTimeout(int socketRef) {
-        Integer timeout = socketTimeouts.get(socketRef);
-        return timeout != null ? timeout : 0;
-    }
 }

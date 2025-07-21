@@ -105,6 +105,8 @@ tasks.register('compileModelClasses', Exec) {
     commandLine = [
             "${javaHome}/bin/javac",
             '--patch-module', "java.base=${srcDir}",
+            '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net=ALL-UNNAMED',
             '-d', outDir
     ] + javaFiles
 }
@@ -134,6 +136,9 @@ tasks.withType(JavaCompile).configureEach {
             '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
             '--add-exports', 'java.base/sun.net=ALL-UNNAMED',
             '--add-exports', 'java.base/sun.net.util=ALL-UNNAMED',
+            '--add-exports', 'java.base/jdk.internal.ref=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net.ext=ALL-UNNAMED',
+            '--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED',
             '--add-exports', 'java.base/sun.net.www=ALL-UNNAMED',
             '--add-opens', 'java.base/java.net=ALL-UNNAMED',
             '--add-opens', 'java.base/sun.net=ALL-UNNAMED'

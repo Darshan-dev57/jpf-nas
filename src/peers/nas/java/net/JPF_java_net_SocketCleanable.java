@@ -20,13 +20,6 @@ public class JPF_java_net_SocketCleanable extends NativePeer {
     }
 
     @MJI
-    public static int register__Ljava_io_FileDescriptor_2__Ljava_lang_ref_Cleaner_Cleanable_2(
-            MJIEnv env, int clsObjRef, int fdRef) {
-        System.out.println("SocketCleanable.register() completely bypassed for JPF-NAS");
-        return MJIEnv.NULL;
-    }
-
-    @MJI
     public static int register__Ljava_io_FileDescriptor_2__V(MJIEnv env, int clsObjRef, int fdRef) {
         System.out.println("SocketCleanable.register(void) bypassed for JPF-NAS");
         return 0;

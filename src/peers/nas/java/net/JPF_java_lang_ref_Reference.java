@@ -15,10 +15,7 @@ public class JPF_java_lang_ref_Reference extends NativePeer {
         // Mock implementation for Java 11
     }
 
-    @MJI
-    public boolean enqueue____Z(MJIEnv env, int objRef) {
-        return false;
-    }
+
 
     @MJI
     public int get____Ljava_lang_Object_2(MJIEnv env, int objRef) {
@@ -27,7 +24,13 @@ public class JPF_java_lang_ref_Reference extends NativePeer {
 
     @MJI
     public void clear____V(MJIEnv env, int objRef) {
-        env.setReferenceField(objRef, "referent", MJIEnv.NULL);
+        System.out.println("Reference.clear() intercepted");
+        // Clear the referent
+        try {
+            env.setReferenceField(objRef, "referent", MJIEnv.NULL);
+        } catch (Exception e) {
+            // Field access failed
+        }
     }
 
     @MJI
