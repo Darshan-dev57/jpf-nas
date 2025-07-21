@@ -65,7 +65,9 @@ public class Socket implements java.io.Closeable {
   }
 
   private native void connect(String host, int port) throws IOException;
-  public native int getHash();
+  public int getHash() {
+    return this.hash;
+  }
   public void connect(SocketAddress endpoint) throws IOException {
     connect(endpoint, 0);
   }
