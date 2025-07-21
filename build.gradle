@@ -87,7 +87,7 @@ tasks.register('examplesJar', Jar) {
 
 // --- Model Classes Compilation ---
 tasks.register('compileModelClasses', Exec) {
-    def srcDir = file('src/classes')
+    def srcDir = file('src/classes/modules')
     def outDir = file("$buildDir/model-classes")
     def javaHome = Jvm.current().javaHome
 
@@ -104,7 +104,7 @@ tasks.register('compileModelClasses', Exec) {
 
     commandLine = [
             "${javaHome}/bin/javac",
-            '--patch-module', "java.base=${srcDir}",
+            '--patch-module', "java.base=${srcDir}/java.base",
             '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
             '--add-exports', 'java.base/sun.net=ALL-UNNAMED',
             '-d', outDir
