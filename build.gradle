@@ -88,7 +88,7 @@ tasks.register('examplesJar', Jar) {
 // --- Model Classes Compilation ---
 tasks.register('compileModelClasses', Exec) {
     def srcDir = file('src/classes/modules')
-    def outDir = file("$buildDir/model-classes")
+    def outDir = file("$buildDir/classes/modules")
     def javaHome = Jvm.current().javaHome
 
     inputs.dir srcDir
@@ -104,6 +104,7 @@ tasks.register('compileModelClasses', Exec) {
 
     commandLine = [
             "${javaHome}/bin/javac",
+            '--module-source-path', 'src/classes/modules',
             '--patch-module', "java.base=${srcDir}/java.base",
             '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
             '--add-exports', 'java.base/sun.net=ALL-UNNAMED',
@@ -115,7 +116,7 @@ tasks.register('modelJar', Jar) {
     dependsOn tasks.named('compileModelClasses')
     dependsOn tasks.named('compileJava')
     archiveBaseName = 'jpf-nas-classes'
-    from("$buildDir/model-classes")
+    from("$buildDir/classes/modules")
 
     from("$buildDir/classes/java/main") {
         include "nas/util/test/TestNasJPF.class"
