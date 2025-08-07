@@ -1,0 +1,206 @@
+import org.gradle.internal.jvm.Jvm
+
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id 'jacoco'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+// --- Source Sets ---
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main', 'src/peers']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/tests']
+        }
+        resources {
+            srcDirs = ['src/tests/resources']
+        }
+    }
+    examples {
+        java {
+            srcDirs = ['src/examples']
+        }
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+// --- Custom Configurations for Examples ---
+configurations {
+    examplesImplementation.extendsFrom implementation
+    examplesRuntimeOnly.extendsFrom runtimeOnly
+}
+
+// --- Dependencies ---
+dependencies {
+    def jpfCoreJar = jpf.Jar.getFullPath()
+    def jpfCoreDir = new File(jpfCoreJar).parent
+
+    implementation files(jpfCoreJar)
+    implementation files("${jpfCoreDir}/jpf-classes.jar")
+    implementation platform('com.google.cloud:libraries-bom:26.38.0')
+    implementation 'com.google.cloud:google-cloud-translate'
+    implementation fileTree(dir: 'lib', include: ['*.jar'])
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation sourceSets.main.output
+
+    // Examples dependencies
+    examplesImplementation platform('com.google.cloud:libraries-bom:26.38.0')
+    examplesImplementation 'com.google.cloud:google-cloud-translate'
+    examplesImplementation fileTree(dir: 'lib', include: ['*.jar'])
+}
+
+// --- Ensure examples are built with the main build ---
+tasks.named('build') {
+    dependsOn tasks.named('compileExamplesJava')
+    dependsOn tasks.named('modelJar')
+    dependsOn tasks.named('examplesJar')
+}
+
+// --- Package examples as a jar ---
+tasks.register('examplesJar', Jar) {
+    dependsOn tasks.named('compileExamplesJava')
+    archiveBaseName = 'jpf-nas-examples'
+    from sourceSets.examples.output
+    manifest {
+        attributes(
+                'Implementation-Title': 'JPF NAS Examples',
+                'Implementation-Version': '1.0'
+        )
+    }
+}
+
+// --- Model Classes Compilation ---
+tasks.register('compileModelClasses', Exec) {
+    def srcDir = file('src/classes/modules')
+    def outDir = file("$buildDir/classes/modules")
+    def javaHome = Jvm.current().javaHome
+
+    inputs.dir srcDir
+    outputs.dir outDir
+
+    def javaFiles = fileTree(dir: srcDir, include: '**/*.java').files.collect { it.path }
+    onlyIf { !javaFiles.isEmpty() }
+
+    doFirst {
+        outDir.mkdirs()
+        delete outDir.listFiles()
+    }
+
+    commandLine = [
+            "${javaHome}/bin/javac",
+            '--module-source-path', 'src/classes/modules',
+            '--patch-module', "java.base=${srcDir}/java.base",
+            '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net=ALL-UNNAMED',
+            '-d', outDir
+    ] + javaFiles
+}
+
+tasks.register('modelJar', Jar) {
+    dependsOn tasks.named('compileModelClasses')
+    dependsOn tasks.named('compileJava')
+    archiveBaseName = 'jpf-nas-classes'
+    from("$buildDir/classes/modules")
+
+    from("$buildDir/classes/java/main") {
+        include "nas/util/test/TestNasJPF.class"
+    }
+
+    manifest {
+        attributes(
+                'Implementation-Title': 'JPF NAS Model Classes',
+                'Implementation-Version': '1.0'
+        )
+    }
+}
+
+// --- Java Compile Options ---
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += [
+            '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net.util=ALL-UNNAMED',
+            '--add-exports', 'java.base/jdk.internal.ref=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net.ext=ALL-UNNAMED',
+            '--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net.www=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.net=ALL-UNNAMED',
+            '--add-opens', 'java.base/sun.net=ALL-UNNAMED'
+    ]
+
+}
+
+test {
+    dependsOn tasks.named('jar')
+    dependsOn tasks.named('modelJar')
+    dependsOn tasks.named('examplesJar')
+    dependsOn tasks.named('compileExamplesJava')
+
+    useJUnit()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+    jvmArgs = [
+            '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
+            '--add-opens', 'java.base/jdk.internal.misc=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.util=ALL-UNNAMED',
+            '--add-exports', 'java.base/sun.net.www.protocol.http=ALL-UNNAMED'
+    ]
+    maxHeapSize = "1024m"
+    forkEvery = 1
+}
+
+jar {
+    dependsOn tasks.named('modelJar')
+    archiveBaseName = 'jpf-nas'
+    from sourceSets.main.output
+    manifest {
+        attributes(
+                'Implementation-Title': 'Java Pathfinder NAS extension',
+        )
+    }
+}
+
+artifacts {
+    archives tasks.named('jar')
+    archives tasks.named('modelJar')
+    archives tasks.named('examplesJar')
+}
+
+publishing {
+    publications {
+        core(MavenPublication) {
+            artifact tasks.named('jar')
+            groupId = 'gov.nasa'
+            artifactId = 'jpf-nas'
+        }
+        model(MavenPublication) {
+            artifact tasks.named('modelJar')
+            groupId = 'gov.nasa'
+            artifactId = 'jpf-nas-classes'
+        }
+        examples(MavenPublication) {
+            artifact tasks.named('examplesJar')
+            groupId = 'gov.nasa'
+            artifactId = 'jpf-nas-examples'
+        }
+    }
+}

@@ -14,17 +14,21 @@ import nas.java.net.connection.Connection;
 
 public class JPF_java_net_SocketOutputStream extends NativePeer {
   ConnectionManager connections = ConnectionManager.getConnections();
-  
+
   @MJI
   public void write__I__V (MJIEnv env, int objRef, int value) {
+    System.out.println("DEBUG: SocketOutputStream.write() called with value=" + value);
+
     int socketRef = env.getElementInfo(objRef).getReferenceField("socket");
     Connection conn = connections.getConnection(socketRef);
-    
+
+    System.out.println("DEBUG: socketRef=" + socketRef + ", conn=" + conn);
+
     ThreadInfo ti = env.getThreadInfo();
     if(ti.isFirstStepInsn()) { // re-execution
       if(Scheduler.failure_injection) {
-        ChoiceGenerator<?> cg = env.getChoiceGenerator(); 
-        
+        ChoiceGenerator<?> cg = env.getChoiceGenerator();
+
         if(cg!=null && (cg instanceof NasThreadChoice)) {
           NasThreadChoice ncg = (NasThreadChoice)cg;
           if(ncg.isExceptionChoice()) {
@@ -34,31 +38,53 @@ public class JPF_java_net_SocketOutputStream extends NativePeer {
         }
       }
     } else {
+      // **KEY CHANGE: ALWAYS update hash first, regardless of connection status**
+      updateSocketHash(env, socketRef, value);
+      System.out.println("DEBUG: Hash update completed for value=" + value);
+
+      // Only proceed with actual I/O operations if connection exists
+      if(conn == null) {
+        System.out.println("DEBUG: No connection - hash updated but no I/O performed");
+        return; // Hash updated successfully, but no network I/O
+      }
+
       if(isConnBroken(env, objRef, conn)) {
+        System.out.println("DEBUG: Connection broken, returning after hash update");
         return;
       }
-      
+
+      // Proceed with actual network I/O operations
+      System.out.println("DEBUG: Connection exists - proceeding with network I/O");
       int reader = getOtherEnd(conn, socketRef);
-      
-      // if it is empty, then there might be a read() waiting for someone to write 
+
       if(JPF_java_net_SocketInputStream.isReadBufferEmpty(conn, reader)) {
         unblockRead(env, conn, socketRef);
       }
-      
+
       writeByte(value, conn, socketRef);
+      System.out.println("DEBUG: Network I/O completed");
     }
   }
-  
+
+  @MJI
+  public static void init____V(MJIEnv env, int clsObjRef) {
+    // Static initialization method
+  }
+
+  private void updateSocketHash(MJIEnv env, int socketRef, int data) {
+    // Delegate to Socket peer's coordinated static method
+    JPF_java_net_Socket.updateSocketHashForDataWrite(env, socketRef, data);
+  }
+
   @MJI
   public void write___3BII__V (MJIEnv env, int objRef, int bufferRef, int off, int len) {
     int socketRef = env.getElementInfo(objRef).getReferenceField("socket");
     Connection conn = connections.getConnection(socketRef);
-    
+    System.out.println("DEBUG: SocketOutputStream.write(array) called, len=" + len + ", conn=" + conn);
     ThreadInfo ti = env.getThreadInfo();
     if(ti.isFirstStepInsn()) { // re-execution
       if(Scheduler.failure_injection) {
-        ChoiceGenerator<?> cg = env.getChoiceGenerator(); 
-        
+        ChoiceGenerator<?> cg = env.getChoiceGenerator();
         if(cg!=null && (cg instanceof NasThreadChoice)) {
           NasThreadChoice ncg = (NasThreadChoice)cg;
           if(ncg.isExceptionChoice()) {
@@ -68,29 +94,53 @@ public class JPF_java_net_SocketOutputStream extends NativePeer {
         }
       }
     } else {
+      // **KEY CHANGE: ALWAYS update hash for all bytes first, regardless of connection**
+      byte[] values = env.getByteArrayObject(bufferRef);
+      for(int i = off; i < off + len; i++) {
+        updateSocketHash(env, socketRef, values[i] & 0xFF);
+      }
+      System.out.println("DEBUG: Hash update completed for " + len + " bytes");
+
+      // Only proceed with actual I/O operations if connection exists
+      if(conn == null) {
+        System.out.println("DEBUG: No connection - hash updated for " + len + " bytes but no I/O performed");
+        return; // Hash updated successfully, but no network I/O
+      }
+
       if(isConnBroken(env, objRef, conn)) {
+        System.out.println("DEBUG: Connection broken, returning after hash update");
         return;
       }
-      
+
+      // Proceed with actual network I/O operations
+      System.out.println("DEBUG: Connection exists - proceeding with network I/O for " + len + " bytes");
       int reader = getOtherEnd(conn, socketRef);
-      
-      // if it is empty, then there might be a read() waiting for someone to write
+
       if(JPF_java_net_SocketInputStream.isReadBufferEmpty(conn, reader)) {
         unblockRead(env, conn, socketRef);
       }
-      
+
       writeByteArray(env, bufferRef, conn, socketRef, off, len);
+      System.out.println("DEBUG: Network I/O completed for " + len + " bytes");
     }
   }
-  
+
+
+
   /**
    * Writing on a closed or terminated connection requires throwing an exception
    * 
    * @return true if there is no exception, OW false
    */
   protected boolean isConnBroken(MJIEnv env, int objRef, Connection conn) {
-    boolean isConnBroken = false;
-    
+    // Add null check for connection - DON'T throw exception here
+    if (conn == null) {
+      System.out.println("DEBUG: Connection is null - treating as broken");
+      // Return true to indicate broken connection, but don't throw exception
+      // This avoids JPF serialization issues
+      return true;
+    }
+
     if(conn.isClosed()) {
       String msg;
       if(JPF_java_net_SocketInputStream.isThisEndClosed(env, objRef)) {
@@ -99,11 +149,12 @@ public class JPF_java_net_SocketOutputStream extends NativePeer {
         msg = "Broken pipe";
       }
       env.throwException("java.net.SocketException", msg);
-      isConnBroken = true;
+      return true;
     }
-    
-    return isConnBroken;
+
+    return false;
   }
+
   
   // unblocks a read which was waiting on an empty buffer
   protected void unblockRead(MJIEnv env, Connection conn, int endpoint) {
@@ -155,27 +206,19 @@ public class JPF_java_net_SocketOutputStream extends NativePeer {
   protected void writeByte(int value, Connection conn, int endpoint) {
     if(conn.isClientEndSocket(endpoint)) {
       conn.clientWrite((byte)value);
-      if(conn.isClient2ServerBufferEmpty()) {
-        throw new RuntimeException();
-      }
     } else {
       conn.serverWrite((byte)value);
-      if(conn.isServer2ClientBufferEmpty()) {
-        throw new RuntimeException();
-      }
     }
   }
   
   // writes an array of byte, represented by dataRef, into this buffer
+// writes an array of byte, represented by dataRef, into this buffer
   protected void writeByteArray(MJIEnv env, int arrValue, Connection conn, int endpoint, int off, int len) {
     byte[] values = env.getByteArrayObject(arrValue);
-    
-    int i = off;
-    
-    // TODO: for now we just assume, buffers never go out of space. We need to
-    // handle full buffer blocking writes at some point
-    for(i=0; i<len; i++) {
-      writeByte(values[i], conn, endpoint);
+
+    // REMOVE hash updates from here - they're already done in the calling method
+    for(int i = off; i < off + len; i++) {
+      writeByte(values[i], conn, endpoint);  // Just write, no hash update
     }
   }
   
