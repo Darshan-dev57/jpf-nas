@@ -4,10 +4,11 @@ import java.io.IOException;
 
 /**
  * Model class for java.net.ServerSocket
- * 
+ *
  * @author Nastaran Shafiei
  */
 public class ServerSocket implements java.io.Closeable {
+
 
   /**
    * The implementation of this Socket.
@@ -26,7 +27,7 @@ public class ServerSocket implements java.io.Closeable {
   /**
    * This creates a 'bound' socket which is ready for ServerSocket.accept() to
    * be called.
-   * 
+   *
    * @param port
    *          the local port on which this socket listen for connections
    */
@@ -49,9 +50,8 @@ public class ServerSocket implements java.io.Closeable {
    * ServerSocket.bind() before ServerSocket.accept() is invoked
    */
   public ServerSocket () throws IOException {
-
   }
-  
+
   private Object lock = new Object();
 
   private Socket acceptedSocket;
@@ -67,9 +67,9 @@ public class ServerSocket implements java.io.Closeable {
   public Socket accept () throws IOException {
     if (isClosed()) {
       throw new SocketException("Socket is closed");
-    } 
+    }
     // TODO: check for the "unbound" state
-    
+
     // The IO buffers of this socket are shared natively with the client socket
     // at the other end
     acceptedSocket = new Socket();
@@ -87,12 +87,12 @@ public class ServerSocket implements java.io.Closeable {
   // TODO: Throws IOException, if an I/O error occurs when closing the socket
   @Override
   public native synchronized void close ();
-  
+
   private int timeout;
   public void setSoTimeout(int timeout) {
     this.timeout = timeout;
   }
-  
+
   @Override
   protected void finalize() throws Throwable{
     close();
