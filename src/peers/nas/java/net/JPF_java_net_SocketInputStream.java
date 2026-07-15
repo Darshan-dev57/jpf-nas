@@ -322,14 +322,4 @@ public class JPF_java_net_SocketInputStream extends NativePeer {
     
     return Scheduler.EMPTY;
   }
-
-  protected static void printWriter(Connection conn, int endpoint) {
-    String result;
-    if(conn.isClientEndSocket(endpoint)) {
-      result = "Client Writing";
-    } else {
-      result = "Server Writing";
-    }
-    System.out.println(result);
-  }
 }
