@@ -22,7 +22,6 @@ if (siteFile.exists()) {
     siteProps.load(siteFile.newDataInputStream())
 }
 def jpfCoreHome = siteProps.getProperty('jpf-core', '../jpf-core')
-println "Using jpf-core at: ${jpfCoreHome}"
 
 // --- Source Sets ---
 sourceSets {
