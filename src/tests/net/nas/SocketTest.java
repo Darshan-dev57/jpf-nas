@@ -18,43 +18,43 @@ import gov.nasa.jpf.util.test.TestMultiProcessJPF;
 
 public class SocketTest extends TestNasJPF {
   String[] args = { "+search.multiple_errors = true",
-                    "+vm.process_finalizers = true",
-                    "+vm.nas.initiating_target = 0"
-                  };
-  
+          "+vm.process_finalizers = true",
+          "+vm.nas.initiating_target = 0"
+  };
+
   int port = 1024;
   final String HOST = "localhost";
-  
+
   @Test
   public void testEstablishingConnection() throws IOException {
     if (mpVerifyNoPropertyViolation(2, args)) {
-      
+
       switch(getProcessId()) {
-      case 0:
-        ServerSocket serverSocket = new ServerSocket(port);
-        serverSocket.setSoTimeout(10);
-        Socket sock1 = null;
-        try {
-          sock1 = serverSocket.accept();
-        } catch(SocketTimeoutException e) {
-          // gets here if no request is coming after a certain amount of time
-          assertNull(sock1);
-        }
-        break;
-        
-      case 1:
-        Socket sock2;
-        try {
-          sock2 = new Socket(HOST, port);
-          assertTrue(sock2.isConnected());
-        } catch(IOException e) {
-          // gets here if there was no server accepting the connection request
-        }
-        break;
+        case 0:
+          ServerSocket serverSocket = new ServerSocket(port);
+          serverSocket.setSoTimeout(10);
+          Socket sock1 = null;
+          try {
+            sock1 = serverSocket.accept();
+          } catch(SocketTimeoutException e) {
+            // gets here if no request is coming after a certain amount of time
+            assertNull(sock1);
+          }
+          break;
+
+        case 1:
+          Socket sock2;
+          try {
+            sock2 = new Socket(HOST, port);
+            assertTrue(sock2.isConnected());
+          } catch(IOException e) {
+            // gets here if there was no server accepting the connection request
+          }
+          break;
       }
     }
   }
-  
+
   /**
    * Blocking accept with timeout throws SocketTimeoutException
    */
@@ -80,82 +80,82 @@ public class SocketTest extends TestNasJPF {
     }
   }
 
-  
+
   @Test
   public void testHash() throws Exception {
     if (mpVerifyNoPropertyViolation(2, args)) {
-     
+
       switch(getProcessId()) {
-      case 0:
-        ServerSocket serverSocket = new ServerSocket(port);
-        Socket sock1 = serverSocket.accept();
-        
-        int h1 = getHash(sock1);
-        assertTrue(h1!=0);
-        
-        OutputStream socketOutput = sock1.getOutputStream();
-        
-        try {
-          socketOutput.write(10);
-          int h2 = getHash(sock1);
-          assertTrue(h1!=h2);
-        } catch(SocketException e) {
-          // attempting to write on a close connection
-        }
-        
-        break;
-      case 1:
-        Socket sock2;
-        try {
-          sock2 = new Socket(HOST, port);
-          
-          
-        } catch(IOException e) {
-          // gets here if there was no server accepting the connection request
-          System.out.println("never stablished!!");
-        }
-        break;
+        case 0:
+          ServerSocket serverSocket = new ServerSocket(port);
+          Socket sock1 = serverSocket.accept();
+
+          int h1 = getHash(sock1);
+          assertTrue(h1!=0);
+
+          OutputStream socketOutput = sock1.getOutputStream();
+
+          try {
+            socketOutput.write(10);
+            int h2 = getHash(sock1);
+            assertTrue(h1!=h2);
+          } catch(SocketException e) {
+            // attempting to write on a close connection
+          }
+
+          break;
+        case 1:
+          Socket sock2;
+          try {
+            sock2 = new Socket(HOST, port);
+
+
+          } catch(IOException e) {
+            // gets here if there was no server accepting the connection request
+            System.out.println("never stablished!!");
+          }
+          break;
       }
     }
   }
-  
+
   @Test
   public void testTimedoutRead() throws IOException {
     if (mpVerifyNoPropertyViolation(2, args)) {
-      
+
       switch(getProcessId()) {
-      case 0:
-        ServerSocket serverSocket = new ServerSocket(port);
-        Socket sock1 = serverSocket.accept();
-        assertTrue(sock1.isConnected());
-        break;
-        
-      case 1:
-        Socket sock2 = null;
-        try {
-          sock2 = new Socket(HOST, port);
-          sock2.setSoTimeout(10);
-          assertTrue(sock2.isConnected());
-        } catch(IOException e) {
-          // gets here if there was no server accepting the connection request
-          return;
-        }
-        
-        try {
-          InputStream in = sock2.getInputStream();
-          in.read();
-          //assertTrue(isOtherEndClosed());
-        } catch(SocketTimeoutException e) {
-          return;
-        } catch(SocketException e) {
-          return;
-        }
-        
-        break;
+        case 0:
+          ServerSocket serverSocket = new ServerSocket(port);
+          Socket sock1 = serverSocket.accept();
+          assertTrue(sock1.isConnected());
+          break;
+
+        case 1:
+          Socket sock2 = null;
+          try {
+            sock2 = new Socket(HOST, port);
+            sock2.setSoTimeout(10);
+            assertTrue(sock2.isConnected());
+          } catch(IOException e) {
+            // gets here if there was no server accepting the connection request
+            return;
+          }
+
+          try {
+            InputStream in = sock2.getInputStream();
+            in.read();
+            //assertTrue(isOtherEndClosed());
+          } catch(SocketTimeoutException e) {
+            return;
+          } catch(SocketException e) {
+            return;
+          }
+
+          break;
       }
     }
   }
-  
+
   static class FinalizeServer {
     @Override
     protected void finalize() throws Throwable {
@@ -164,8 +164,8 @@ public class SocketTest extends TestNasJPF {
       System.out.println("DONE!");
     }
   }
-  
-  // This is testing finalizer threads. It should belong to jpf-core, but I add it here 
+
+  // This is testing finalizer threads. It should belong to jpf-core, but I add it here
   // since it needs support for ServerSocket.accept().
   // here we make sure that MultiProcessVM does not ignore deadlocks in finalizers.
   @Test
@@ -174,4 +174,5 @@ public class SocketTest extends TestNasJPF {
       new FinalizeServer();
     }
   }
+
 }
