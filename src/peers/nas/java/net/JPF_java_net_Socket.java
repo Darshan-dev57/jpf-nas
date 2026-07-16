@@ -57,7 +57,6 @@ public class JPF_java_net_Socket extends NativePeer {
       env.setReferenceField(socketRef, "lock", lock);
 
     }  catch (Exception e) {
-      System.out.println("Socket initialization: using minimal mode with fallback hash storage");
       synchronized (JPF_java_net_Socket.class) {
         fallbackHashes.put(socketRef, hashCounter++);
       }
@@ -328,7 +327,6 @@ public class JPF_java_net_Socket extends NativePeer {
 
       return inputStreamRef;
     } catch (Exception e) {
-      System.out.println("Failed to create SocketInputStream: " + e.getMessage());
       return MJIEnv.NULL;
     }
   }
@@ -451,7 +449,6 @@ public class JPF_java_net_Socket extends NativePeer {
       }
 
       env.setIntField(socketRef, "hash", newHash);
-      System.out.println("Socket hash updated: " + currentHash + " -> " + newHash + " (type: " + type + ", data: " + data + ")");
     } catch (Exception e) {
       // Use fallback storage
       int currentHash = fallbackHashes.getOrDefault(socketRef, 0);
@@ -469,7 +466,6 @@ public class JPF_java_net_Socket extends NativePeer {
       }
 
       fallbackHashes.put(socketRef, newHash);
-      System.out.println("Fallback hash updated: " + currentHash + " -> " + newHash + " (type: " + type + ", data: " + data + ")");
     }
   }
 
@@ -508,18 +504,15 @@ public class JPF_java_net_Socket extends NativePeer {
       int currentHash = env.getIntField(socketRef, "hash");
       int newHash = currentHash ^ data;
       env.setIntField(socketRef, "hash", newHash);
-      System.out.println("Socket hash updated for data write: " + currentHash + " -> " + newHash + " (data: " + data + ")");
     } catch (Exception e) {
       // Use fallback storage
       int currentHash = fallbackHashes.getOrDefault(socketRef, 0);
       int newHash = currentHash ^ data;
       fallbackHashes.put(socketRef, newHash);
-      System.out.println("Fallback hash updated for data write: " + currentHash + " -> " + newHash + " (data: " + data + ")");
 
       //  to sync back to field periodically
       try {
         env.setIntField(socketRef, "hash", newHash);
-        System.out.println("DEBUG: Successfully synced fallback hash to socket field");
       } catch (Exception syncEx) {
       }
     }
