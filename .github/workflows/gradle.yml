@@ -26,13 +26,12 @@ jobs:
         run: |
           git clone https://github.com/javapathfinder/jpf-core.git $HOME/jpf-core
           cd $HOME/jpf-core
-          ./gradlew build
+          ./gradlew buildJar
 
       - name: Create site.properties file
         run: |
           mkdir -p $HOME/.jpf
           echo "jpf-core = $HOME/jpf-core" > $HOME/.jpf/site.properties
-          echo "extensions = $HOME/jpf-core" >> $HOME/.jpf/site.properties
 
       - name: Build and test jpf-nas
         run: ./gradlew clean test
