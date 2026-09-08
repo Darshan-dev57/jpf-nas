@@ -117,21 +117,15 @@ tasks.register('modelJar', Jar) {
     archiveBaseName = 'jpf-nas-classes'
     destinationDirectory = file("${buildDir}")
 
-    // (like jpf-core structure)
+    // JPF looks up modular classes under modules/, keep both prefixes
     from("${buildDir}/classes/modules") {
         into 'modules'
         include '**/*.class'
     }
 
-    // include directly under java.base/ for compatibility
     from("${buildDir}/classes/modules") {
         into ''
         include '**/*.class'
-    }
-
-    // Include test helper class if needed
-    from("$buildDir/classes/java/main") {
-        include "nas/util/test/TestNasJPF.class"
     }
 
     manifest {
