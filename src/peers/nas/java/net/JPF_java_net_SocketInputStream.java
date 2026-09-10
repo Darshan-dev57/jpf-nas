@@ -25,17 +25,6 @@ public class JPF_java_net_SocketInputStream extends NativePeer {
     // serverSocket can be connected to multiple clients at the time
     int socketRef = env.getElementInfo(objRef).getReferenceField("socket");
 
-    // **NEW: Quick timeout check for test compatibility - MUST BE FIRST**
-    if (socketRef != MJIEnv.NULL && !ti.isFirstStepInsn()) {
-      int timeout = getTimeout(env, socketRef);
-
-      // For very short timeouts in tests, immediately timeout
-      if (timeout > 0 && timeout <= 10) {
-        env.throwException("java.net.SocketTimeoutException", "Read timed out");
-        return EOF;
-      }
-    }
-
     Connection conn = connections.getConnection(socketRef);
 
     // **NEW: Add null check**
@@ -95,17 +84,6 @@ public class JPF_java_net_SocketInputStream extends NativePeer {
     // Note that we can only retrieve the connection using the client end cause
     // serverSocket can be connected to multiple clients at the time
     int socketRef = env.getElementInfo(objRef).getReferenceField("socket");
-
-    // **NEW: Quick timeout check for test compatibility - MUST BE FIRST**
-    if (socketRef != MJIEnv.NULL && !ti.isFirstStepInsn()) {
-      int timeout = getTimeout(env, socketRef);
-
-      // For very short timeouts in tests, immediately timeout
-      if (timeout > 0 && timeout <= 10) {
-        env.throwException("java.net.SocketTimeoutException", "Read timed out");
-        return EOF;
-      }
-    }
 
     Connection conn = connections.getConnection(socketRef);
 
