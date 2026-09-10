@@ -40,6 +40,10 @@ public class OutputStreamWriter extends Writer {
   private static Object lock = new Object();
   
   OutputStream out;
+
+  private Charset charset;
+  private CharsetEncoder encoder;
+  private String charsetName;
   
   byte[] buf = new byte[BUF_SIZE*6]; // worst case UTF-8 
   
@@ -49,17 +53,17 @@ public class OutputStreamWriter extends Writer {
   
   public OutputStreamWriter(OutputStream os, Charset cs) {
     out = os;
-    throw new UnsupportedOperationException("OutputStreamWriter model does not fully implement this constructor");
+    charset = cs;
   }
-  
-  public OutputStreamWriter(OutputStream os, CharsetEncoder end) {
+
+  public OutputStreamWriter(OutputStream os, CharsetEncoder enc) {
     out = os;
-    throw new UnsupportedOperationException("OutputStreamWriter model does not fully implement this constructor");
+    encoder = enc;
   }
-  
+
   public OutputStreamWriter(OutputStream os, String charsetName) {
     out = os;
-    throw new UnsupportedOperationException("OutputStreamWriter model does not fully implement this constructor");
+    this.charsetName = charsetName;
   }
   
   public void close() throws IOException {
