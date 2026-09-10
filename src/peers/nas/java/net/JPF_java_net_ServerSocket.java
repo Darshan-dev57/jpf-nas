@@ -27,7 +27,7 @@ public class JPF_java_net_ServerSocket extends NativePeer {
   ConnectionManager connections = ConnectionManager.getConnections();
 
   @MJI
-  public void CheckForAddressAlreadyInUse__I__V(MJIEnv env, int serverSocketRef, int port) {
+  public void checkForAddressAlreadyInUse__I__V(MJIEnv env, int serverSocketRef, int port) {
     String host = getServerHost(env, serverSocketRef);
     int existingServer = connections.getServerSocketRef(port, host);
 
