@@ -26,6 +26,18 @@ import nas.java.net.connection.Connection;
 public class JPF_java_net_ServerSocket extends NativePeer {
   ConnectionManager connections = ConnectionManager.getConnections();
 
+  @MJI
+  public void checkForAddressAlreadyInUse__I__V(MJIEnv env, int serverSocketRef, int port) {
+    String host = getServerHost(env, serverSocketRef);
+    int existingServer = connections.getServerSocketRef(port, host);
+
+    if (existingServer != MJIEnv.NULL && existingServer != serverSocketRef) {
+      ElementInfo ei = env.getElementInfo(existingServer);
+      if (ei != null && !ei.getBooleanField("closed")) {
+        env.throwException("java.net.BindException", "Address already in use: " + port);
+      }
+    }
+  }
 
   public String getServerHost (MJIEnv env, int serverSocketRef) {
     VM vm = VM.getVM();
@@ -44,23 +56,6 @@ public class JPF_java_net_ServerSocket extends NativePeer {
   public int accept0____Ljava_net_Socket_2(MJIEnv env, int serverSocketRef) {
     ThreadInfo ti = env.getThreadInfo();
 
-    if (ti.getName().contains("finalizer")) {
-      System.out.println("Finalizer thread detected in accept0 - blocking indefinitely");
-
-      // Create or get lock
-      int lock = env.getReferenceField(serverSocketRef, "lock");
-      if (lock == MJIEnv.NULL) {
-        lock = env.newObject("java.lang.Object");
-        env.setReferenceField(serverSocketRef, "lock", lock);
-      }
-
-      // Block indefinitely - this creates the deadlock
-      ElementInfo ei = env.getModifiableElementInfo(lock);
-      ei.wait(ti, 0, false); // Wait forever
-      env.repeatInvocation();
-      return MJIEnv.NULL;
-    }
-
     if (ti.isFirstStepInsn()) { // re-executed
 
       if(handleInjectedExceptionCg(env)) {
@@ -72,14 +67,8 @@ public class JPF_java_net_ServerSocket extends NativePeer {
       // If no cached socket, create one
       if (acceptedSocket == MJIEnv.NULL) {
         acceptedSocket = env.newObject("java.net.Socket");
-        int impl = env.newObject("java.net.PlainSocketImpl");
+        int impl = env.newObject("java.net.SocketImpl");
         env.setReferenceField(acceptedSocket, "impl", impl);
-
-        // Initialize socket fields for Java 11 compatibility
-        env.setBooleanField(acceptedSocket, "created", true);
-        env.setBooleanField(acceptedSocket, "bound", true);
-        env.setBooleanField(acceptedSocket, "connected", true);
-        env.setBooleanField(acceptedSocket, "closed", false);
 
         env.getModifiableElementInfo(serverSocketRef).setReferenceField("acceptedSocket", acceptedSocket);
       }
@@ -99,32 +88,6 @@ public class JPF_java_net_ServerSocket extends NativePeer {
       }
 
     } else { // First execution
-
-      // **NEW: Check for finalizer thread deadlock test**
-      if (ti.getName().contains("finalizer")) {
-        // This is the finalizer deadlock test - block indefinitely
-        System.out.println("Finalizer thread detected - creating deadlock condition");
-        int lock = env.getReferenceField(serverSocketRef, "lock");
-        if (lock == MJIEnv.NULL) {
-          lock = env.newObject("java.lang.Object");
-          env.setReferenceField(serverSocketRef, "lock", lock);
-        }
-        ElementInfo ei = env.getModifiableElementInfo(lock);
-        ei.wait(ti, 0, false); // Wait forever - creates deadlock
-        env.repeatInvocation();
-        return MJIEnv.NULL;
-      }
-
-      // **NEW: Check for immediate timeout test**
-      int timeout = getTimeout(env, serverSocketRef);
-      if (timeout > 0 && timeout <= 10) {
-        // For testTimedoutAccept() - throw immediate timeout
-        System.out.println("Short timeout detected (" + timeout + "ms) - throwing SocketTimeoutException");
-        env.throwException("java.net.SocketTimeoutException", "Accept timed out");
-        return MJIEnv.NULL;
-      }
-
-      // **EXISTING LOGIC** - Normal accept behavior
       if(isClosed(env, serverSocketRef)) {
         env.throwException("java.net.SocketException", "Socket is closed");
         resetAndGetAcceptedSocket(env, serverSocketRef);
@@ -209,7 +172,9 @@ public class JPF_java_net_ServerSocket extends NativePeer {
     Connection conn =  connections.getPendingServerConn(port, serverHost);
     
     // we need to terminate the connection to avoid sockets from connecting to this server
-    connections.terminateConnection(conn);
+    if (conn != null) {
+      connections.terminateConnection(conn);
+    }
     
     return;
   }

@@ -59,11 +59,6 @@ public class JPF_java_net_SocketOutputStream extends NativePeer {
     }
   }
 
-  @MJI
-  public static void init____V(MJIEnv env, int clsObjRef) {
-    // Static initialization method
-  }
-
   private void updateSocketHash(MJIEnv env, int socketRef, int data) {
     // Delegate to Socket peer's coordinated static method
     JPF_java_net_Socket.updateSocketHashForDataWrite(env, socketRef, data);
